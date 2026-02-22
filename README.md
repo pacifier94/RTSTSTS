@@ -2,6 +2,12 @@
 
 A modular real-time speech translation system that converts live microphone input into translated speech output using a streaming, concurrent pipeline architecture.
 
+Guide:
+Professor Kolin Paul
+
+Team Members:
+Astitwa Saxsena 2025MCS3005
+Abhishek Gupta 2025MCS2963
 ---
 
 ## Project Overview
