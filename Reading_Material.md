@@ -50,7 +50,7 @@ Although focused on offline systems, this review explains core challenges in int
 
 ---
 
-##  How These Papers Help This Project
+##  How These Papers Will Help In Building This Project
 
 These references collectively support:
 
