@@ -1,8 +1,6 @@
 ## Related Research & Reading List — Real-Time Speech-to-Speech Translation
 
-Below are key research papers and implementation references that informed the design and architecture of this project. Each entry includes a short summary and a direct link.
-
----
+Below are key research papers and implementation references that informed the design and architecture of this project. 
 
 ### 1. Direct Speech to Speech Translation: A Review
 Survey paper covering both cascaded pipelines (ASR→MT→TTS) and direct neural speech-to-speech systems. Discusses architectural trade-offs, latency issues, and challenges in building real-time S2ST systems. Useful for understanding the research landscape and motivating system design choices.  
