@@ -1,183 +1,227 @@
-# Real-Time Speech-to-Speech Translation System
+# Real-Time Speech-to-Speech Translation Pipeline
 
-## Overview
-
-This project implements a fully integrated, real-time speech translation pipeline that converts live microphone input in one Indian language into audible translated speech in another language. The system is designed as a continuous streaming architecture that operates end-to-end without manual intervention, ensuring low latency and stable performance during extended runtime.
+A modular real-time speech translation system that converts live microphone input into translated speech output using a streaming, concurrent pipeline architecture.
 
 ---
 
-## Problem Statement
+## Project Overview
 
-Speech recognition, translation, and synthesis technologies exist individually, but integrating them into a single unified pipeline that runs continuously, offline, and with bounded latency is a significant systems engineering challenge. This project addresses that challenge by designing a tightly coupled runtime pipeline that maintains liveness, responsiveness, and correctness across all processing stages.
+This project implements a real-time speech-to-speech translation system designed as a continuous processing pipeline. The system captures live speech, performs recognition, translates text, synthesizes audio, and plays the translated speech — all concurrently and with minimal latency.
+
+Unlike traditional batch-based systems, this architecture processes streaming data incrementally and supports partial outputs, making it suitable for real-time interactive use.
 
 ---
 
-## System Architecture
+## Core Design Philosophy
 
-The system is structured as a real-time streaming pipeline:
+The system is built around three principles:
+
+* **Streaming first** — all components process data continuously
+* **Concurrent execution** — each module runs independently
+* **Loose coupling** — stages communicate only through queues
+
+Every module follows the same contract:
 
 ```
-Microphone → ASR → Translation → TTS → Speaker
+input → process → output
 ```
 
-### Pipeline Stages
-
-1. **Audio Capture**
-
-   * Continuously captures audio from the microphone.
-   * Streams audio frames to downstream components.
-
-2. **Automatic Speech Recognition (ASR)**
-
-   * Performs incremental speech recognition.
-   * Produces partial and final transcripts.
-
-3. **Language Translation**
-
-   * Translates recognized speech into the target language.
-   * Supports revisions when upstream transcription changes.
-
-4. **Speech Synthesis (TTS)**
-
-   * Converts translated text into speech audio.
-   * Streams synthesized audio to playback.
-
-5. **Playback**
-
-   * Outputs translated speech through the speaker in real time.
+This makes the system extensible, testable, and easy to debug.
 
 ---
 
-## Concurrency Model
+## Current Implementation Status
 
-All pipeline stages execute concurrently and communicate using streaming interfaces such as queues or ring buffers. This allows continuous flow of data while preventing blocking between components.
-
-Key properties:
-
-* Non-blocking communication
-* Streaming data flow
-* Independent stage execution
-* Backpressure handling
-* Revision propagation across stages
-
----
-
-## Dashboard & Observability
-
-A real-time monitoring dashboard is a core system component. It provides live visibility into system behavior without requiring logs or debugging tools.
-
-### Dashboard Displays
-
-* Live audio activity indicator
-* Partial and finalized transcription
-* Partial and finalized translation
-* Per-stage latency
-* End-to-end latency
-* Playback status
-* Liveness indicators for each pipeline stage
-
-The dashboard ensures system transparency and enables real-time performance evaluation.
-
----
-
-## Implementation Details
-
-### Streaming Design
-
-* Stages communicate via streaming buffers.
-* Each component processes data incrementally.
-* Partial outputs are allowed and updated dynamically.
-
-### Revision Handling
-
-When ASR updates its hypothesis:
-
-* Translation stage revises output
-* TTS updates spoken output accordingly
-
-### Parallel Execution
-
-Each module runs independently in parallel:
-
-* Audio capture thread
-* Recognition thread
-* Translation thread
-* Synthesis thread
-* Playback thread
-
----
-
-## System Requirements
-
-The system must operate under the following constraints:
-
-* Fully offline execution (no cloud dependency)
-* Continuous real-time operation
-* Stable performance under extended use
-* Bounded latency across the pipeline
-* No manual triggering of stages
-
----
-
-## Key Design Goals
-
-* Low latency streaming translation
-* Robust concurrency
-* Fault tolerance between stages
-* Observable system state
-* Demonstrable real-time performance
-
----
-
-## Expected Outcome
-
-The completed system demonstrates continuous real-time spoken language translation with measurable latency and transparent runtime behavior. The final artifact is suitable for live demonstrations, evaluation, and future extension into more advanced real-time language systems.
-
----
-
-## Suggested Repository Structure
+The current version implements a minimal working real-time pipeline:
 
 ```
-project-root/
+Microphone → Dummy ASR → Console Output
+```
+
+Features implemented:
+
+* Concurrent pipeline engine
+* Thread-based stage execution
+* Streaming queues between modules
+* Live microphone capture
+* Simulated ASR module
+
+This version validates the real-time infrastructure before integrating heavy models.
+
+---
+
+## Repository Structure
+
+```
+speech-pipeline/
 │
-├── audio_input/
+├── core/
+│   ├── stage.py        # Base stage class for all modules
+│   ├── pipeline.py     # Pipeline controller
+│
+├── audio/
+│   └── mic.py          # Microphone streaming input
+│
 ├── asr/
-├── translation/
-├── tts/
-├── playback/
-├── dashboard/
-├── utils/
-├── configs/
-└── README.md
+│   └── dummy_asr.py    # Placeholder recognizer
+│
+└── main.py             # Entry point
 ```
 
 ---
 
-## Evaluation Criteria
+## How the Pipeline Works
 
-The system should clearly demonstrate:
+Each processing unit is implemented as a **Stage** thread:
 
-* Correctness of translation output
-* Stable real-time performance
-* Accurate latency measurement
-* Robust pipeline integration
-* Clear observability through dashboard
+* reads from input queue
+* processes data
+* writes to output queue
+
+The pipeline controller simply starts and stops all stages.
+
+Because stages do not depend on each other directly, they can be replaced or upgraded independently.
+
+---
+
+## Running the Project
+
+### Install Dependencies
+
+```
+pip install sounddevice
+```
+
+---
+
+### Run
+
+```
+python main.py
+```
+
+Expected output:
+
+```
+Running pipeline...
+TEXT: recognized speech chunk
+TEXT: recognized speech chunk
+```
+
+---
+
+## Development Roadmap
+
+The system will be expanded incrementally to maintain stability.
+
+---
+
+### Phase 1 — Infrastructure (Completed)
+
+* Pipeline engine
+* Threaded stages
+* Streaming queues
+* Microphone capture
+* Dummy recognizer
+
+---
+
+### Phase 2 — Real Speech Recognition
+
+Replace dummy recognizer with real streaming ASR:
+
+Recommended options:
+
+* Vosk (offline, lightweight)
+* Whisper streaming
+* DeepSpeech
+
+---
+
+### Phase 3 — Translation Stage
+
+Add translation module:
+
+```
+Mic → ASR → Translation → Console
+```
+
+Requirements:
+
+* incremental translation
+* revision handling
+* low latency
+
+---
+
+### Phase 4 — Speech Synthesis
+
+Add TTS module:
+
+```
+Mic → ASR → Translation → TTS → Speaker
+```
+
+Requirements:
+
+* real-time audio playback
+* buffering
+* smooth streaming
+
+---
+
+### Phase 5 — Dashboard
+
+Add live system monitor showing:
+
+* audio activity
+* partial transcripts
+* translation updates
+* per-stage latency
+* pipeline health
+
+---
+
+### Phase 6 — Optimization
+
+Final system improvements:
+
+* latency tuning
+* concurrency optimization
+* queue sizing
+* stability testing
+* stress testing
+
+---
+
+## Why This Architecture?
+
+Real-time speech systems fail most often because of poor pipeline design, not model accuracy.
+
+This architecture ensures:
+
+* non-blocking execution
+* predictable latency
+* independent module testing
+* easy debugging
+* flexible upgrades
 
 ---
 
 ## Future Extensions
 
-Possible improvements include:
+Possible improvements:
 
-* Additional language pairs
-* Noise robustness
-* Model optimization
-* Hardware acceleration
-* Adaptive latency control
-* Mobile or embedded deployment
+* multilingual translation
+* emotion-aware speech synthesis
+* speaker diarization
+* mobile deployment
+* GPU acceleration
+* adaptive buffering
+* noise suppression module
 
 ---
 
 ## Summary
 
-This project is not just a speech application but a complete real-time systems engineering exercise. It highlights the challenges of concurrency, streaming data flow, latency management, and system observability in a unified pipeline architecture.
+This project demonstrates a full real-time systems approach to speech translation. The focus is not only on recognition or translation accuracy but on building a robust, observable, low-latency streaming architecture capable of running continuously and reliably.
