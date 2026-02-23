@@ -197,3 +197,15 @@ This architecture ensures:
 
 ---
 
+## Technical Considerations
+# Latency
+The system needs to minimize latency at each stage to enable near real-time communication. Optimizations will be implemented at the queue level and within the stages to balance throughput and response time.
+
+# Concurrency
+To handle real-time processing, each stage will run in its own thread, with communication via thread-safe queues. Proper synchronization mechanisms will be used to avoid race conditions.
+
+# Fault Tolerance
+The system should handle failure gracefully. For example:
+  If the ASR module fails, it should fall back to a backup recognizer or output a failure message.
+  The pipeline should allow dynamic stage replacement without restarting the entire system.
+
