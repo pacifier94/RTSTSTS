@@ -20,6 +20,24 @@ This makes the system extensible, testable, and easy to debug.
 
 ---
 
+## System Design
+
+The system operates as a modular pipeline where each processing stage is independent. Each stage can be replaced, modified, or upgraded without affecting others, ensuring ease of development and extensibility.
+
+Pipeline Architecture
+
+```
+[Mic] → [ASR] → [Translation] → [TTS] → [Speaker]
+```
+
+Microphone Input (Mic) — Captures audio in real time.
+Automatic Speech Recognition (ASR) — Converts speech into text.
+Translation — Translates the recognized speech to a target language.
+Text-to-Speech (TTS) — Converts the translated text back into speech for playback.
+Speaker Output — Plays the translated speech.
+
+Each of these stages operates in parallel, reading from an input queue, processing the data, and writing to an output queue.
+
 
 ## Repository Structure
 
