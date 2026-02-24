@@ -224,3 +224,16 @@ The system should handle failure gracefully. For example:
   If the ASR module fails, it should fall back to a backup recognizer or output a failure message.
   The pipeline should allow dynamic stage replacement without restarting the entire system.
 
+## Additional Optional Features
+
+### Scalability and Multi-User Support
+To handle higher traffic or simultaneous conversations.
+
+### Dynamic Language Switching
+The system will be able to switch between languages dynamically if the user changes languages mid-conversation.
+
+### Audio Preprocessing and Noise Reduction
+To enhance speech recognition accuracy, a **preprocessing stage** for noise cancellation, echo reduction, and volume normalization will be implemented before the audio enters the ASR stage.
+
+### Privacy and Security Considerations
+All audio data will be encrypted in transit and at rest. Additionally, user consent will be required before audio data is processed, and users will have the option to delete their data upon request.
