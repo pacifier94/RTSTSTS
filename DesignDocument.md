@@ -30,11 +30,26 @@ Pipeline Architecture
 [Mic] → [ASR] → [Translation] → [TTS] → [Speaker]
 ```
 
-Microphone Input (Mic) — Captures audio in real time.
-Automatic Speech Recognition (ASR) — Converts speech into text.
-Translation — Translates the recognized speech to a target language.
-Text-to-Speech (TTS) — Converts the translated text back into speech for playback.
-Speaker Output — Plays the translated speech.
+1. **Microphone Input (Mic)**:
+   - Captures raw audio continuously.
+   - Provides data to ASR in real-time.
+
+2. **Automatic Speech Recognition (ASR)**:
+   - Converts speech to text using streaming models (e.g., Vosk, Whisper, or DeepSpeech).
+   - Outputs transcribed text, which is sent to the Translation stage.
+
+3. **Translation**:
+   - Translates text from source language to the target language.
+   - Outputs translated text to TTS.
+   - Ensure the translation system is optimized for low-latency, incremental processing.
+
+4. **Text-to-Speech (TTS)**:
+   - Converts translated text into speech.
+   - Audio is buffered and streamed to the speaker.
+
+5. **Speaker Output**:
+   - Plays the translated speech to the user in real-time.
+   - Audio playback is continuous, even if the translation and synthesis are still processing.
 
 Each of these stages operates in parallel, reading from an input queue, processing the data, and writing to an output queue.
 
