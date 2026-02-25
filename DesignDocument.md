@@ -57,13 +57,17 @@ Each of these stages operates in parallel, reading from an input queue, processi
 
 The high-level Data Flow Diagram for the speech-to-speech translation pipeline:
 
-  +------------+         +--------+         +------------+         +---------+         +---------+
-  |   Mic      |  -----> |   ASR  |  -----> | Translation |  -----> |   TTS   |  -----> | Speaker |
-  | (Capture)  |         | (Transcribe)     | (Translate)  |         | (Synthesize)      | (Output)|
-  +------------+         +--------+         +------------+         +---------+         +---------+
-         |                   |                   |                   |                   |
-         v                   v                   v                   v                   v
-  (Raw Audio)         (Text Chunk)        (Translated Text)    (Speech Chunk)       (Audio Stream)
+1. **Mic → ASR**:  
+   The microphone captures raw audio continuously and sends it to ASR for transcription.
+
+2. **ASR → Translation**:  
+   The ASR module transcribes the audio into text and passes it to the Translation module.
+
+3. **Translation → TTS**:  
+   The translated text is passed to the TTS module for speech synthesis.
+
+4. **TTS → Speaker**:  
+   The synthesized speech is played through the speaker output.
   
 ## Repository Structure
 
