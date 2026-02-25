@@ -53,7 +53,18 @@ Pipeline Architecture
 
 Each of these stages operates in parallel, reading from an input queue, processing the data, and writing to an output queue.
 
+## Data Flow Diagram (DFD)
 
+The high-level Data Flow Diagram for the speech-to-speech translation pipeline:
+
+  +------------+         +--------+         +------------+         +---------+         +---------+
+  |   Mic      |  -----> |   ASR  |  -----> | Translation |  -----> |   TTS   |  -----> | Speaker |
+  | (Capture)  |         | (Transcribe)     | (Translate)  |         | (Synthesize)      | (Output)|
+  +------------+         +--------+         +------------+         +---------+         +---------+
+         |                   |                   |                   |                   |
+         v                   v                   v                   v                   v
+  (Raw Audio)         (Text Chunk)        (Translated Text)    (Speech Chunk)       (Audio Stream)
+  
 ## Repository Structure
 
 ```
