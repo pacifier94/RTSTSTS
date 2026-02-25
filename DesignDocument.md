@@ -237,3 +237,12 @@ To enhance speech recognition accuracy, a **preprocessing stage** for noise canc
 
 ### Privacy and Security Considerations
 All audio data will be encrypted in transit and at rest. Additionally, user consent will be required before audio data is processed, and users will have the option to delete their data upon request.
+
+
+## The "Hello World" Test Sequence
+
+To verify the pipeline is "Live," we will try to use a three-step validation:
+
+1.  **Level 1 (Audio):** `Mic -> Speaker` (Loopback test: Do you hear yourself?)
+2.  **Level 2 (Text):** `Mic -> ASR -> Console` (Transcription test: Do you see your words?)
+3.  **Level 3 (Full):** `Mic -> ASR -> Translation -> TTS -> Speaker` (The full loop).
