@@ -60,8 +60,9 @@ Although focused on offline systems, this review explains core challenges in int
   Clear explanation of how ASR, Machine Translation, and TTS integrate to build speech-to-speech systems.
 
 ### 10. [Direct Speech-to-Speech Translation: A Review (arXiv)](https://arxiv.org/html/2503.04799v1) 
+Comprehensive research survey comparing cascaded and direct neural S2ST architectures, with focus on latency and real-time challenges.
 
-  Comprehensive research survey comparing cascaded and direct neural S2ST architectures, with focus on latency and real-time challenges.
+
 ---
 
 ##  How These Papers Will Help In Building This Project
