@@ -1,3 +1,11 @@
+### NLP Foundations
+-  [Natural Language Processing Overview (GeeksforGeeks)](https://www.geeksforgeeks.org/nlp/natural-language-processing-overview/)  
+  Beginner-friendly overview of core NLP concepts, techniques, and real-world applications.
+
+-  [Natural Language Processing – Springer Book](https://link.springer.com/book/10.1007/978-981-15-0595-9)  
+  Academic reference covering advanced NLP methods, architectures, and practical language processing systems.
+
+
 ## Related Research & Reading List — Real-Time Speech-to-Speech Translation
 
 Below are key research papers and implementation references that informed the design and architecture of this project. 
@@ -48,6 +56,12 @@ Explains traditional cascaded speech translation architecture and discusses desi
 Although focused on offline systems, this review explains core challenges in integrating ASR, translation, and synthesis modules. Provides strong conceptual background for designing real-time pipelines.  
 🔗 https://www.ijfmr.com/papers/2025/6/62449.pdf
 
+### 9. [Speech-to-Speech Translation (GeeksforGeeks)](https://www.geeksforgeeks.org/nlp/speech-to-speech-translation/)  
+  Clear explanation of how ASR, Machine Translation, and TTS integrate to build speech-to-speech systems.
+
+### 10. [Direct Speech-to-Speech Translation: A Review (arXiv)](https://arxiv.org/html/2503.04799v1) 
+
+  Comprehensive research survey comparing cascaded and direct neural S2ST architectures, with focus on latency and real-time challenges.
 ---
 
 ##  How These Papers Will Help In Building This Project
