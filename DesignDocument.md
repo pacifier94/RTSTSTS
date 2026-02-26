@@ -1,263 +1,282 @@
-# Real-Time Speech-to-Speech Translation Pipeline
 
-A modular real-time speech translation system that converts live microphone input into translated speech output using a streaming, concurrent pipeline architecture.
+# Structured Design Document
 
-## Core Design Philosophy
+## Real-Time Speech-to-Speech Translation System
 
-The system is built around three principles:
 
-* **Streaming first** — all components process data continuously
-* **Concurrent execution** — each module runs independently
-* **Loose coupling** — stages communicate only through queues
+# 1. Introduction
 
-Every module follows the same contract:
+This project aims to design and implement a fully integrated real-time speech-to-speech translation system that converts live spoken input in one Indian language into audible translated speech in another language. The system is built as a modular streaming pipeline that operates continuously, offline, and with bounded latency.
 
-```
-input → process → output
-```
-
-This makes the system extensible, testable, and easy to debug.
+The primary focus of this work is systems integration, concurrency design, latency control, and runtime observability rather than isolated model performance.
 
 ---
 
-## System Design
+# 2. Problem Statement
 
-The system operates as a modular pipeline where each processing stage is independent. Each stage can be replaced, modified, or upgraded without affecting others, ensuring ease of development and extensibility.
+While Automatic Speech Recognition (ASR), Machine Translation (MT), and Text-to-Speech (TTS) systems exist independently, integrating them into a unified, low-latency, real-time pipeline presents significant engineering challenges. These challenges include:
 
-Pipeline Architecture
+* Managing streaming data flow
+* Handling partial and revised outputs
+* Controlling latency accumulation
+* Maintaining stability under continuous operation
+* Providing runtime observability
 
-```
-[Mic] → [ASR] → [Translation] → [TTS] → [Speaker]
-```
-
-1. **Microphone Input (Mic)**:
-   - Captures raw audio continuously.
-   - Provides data to ASR in real-time.
-
-2. **Automatic Speech Recognition (ASR)**:
-   - Converts speech to text using streaming models (e.g., Vosk, Whisper, or DeepSpeech).
-   - Outputs transcribed text, which is sent to the Translation stage.
-
-3. **Translation**:
-   - Translates text from source language to the target language.
-   - Outputs translated text to TTS.
-   - Ensure the translation system is optimized for low-latency, incremental processing.
-
-4. **Text-to-Speech (TTS)**:
-   - Converts translated text into speech.
-   - Audio is buffered and streamed to the speaker.
-
-5. **Speaker Output**:
-   - Plays the translated speech to the user in real-time.
-   - Audio playback is continuous, even if the translation and synthesis are still processing.
-
-Each of these stages operates in parallel, reading from an input queue, processing the data, and writing to an output queue.
-
-## Data Flow Diagram (DFD)
-
-The high-level Data Flow Diagram for the speech-to-speech translation pipeline:
-
-1. **Mic → ASR**:  
-   The microphone captures raw audio continuously and sends it to ASR for transcription.
-
-2. **ASR → Translation**:  
-   The ASR module transcribes the audio into text and passes it to the Translation module.
-
-3. **Translation → TTS**:  
-   The translated text is passed to the TTS module for speech synthesis.
-
-4. **TTS → Speaker**:  
-   The synthesized speech is played through the speaker output.
-  
-## Repository Structure
-
-```
-speech-pipeline/
-│
-├── core/
-│   ├── stage.py        # Base stage class for all modules
-│   ├── pipeline.py     # Pipeline controller
-│
-├── audio/
-│   └── mic.py          # Microphone streaming input
-│
-├── asr/
-│   └── dummy_asr.py    # Placeholder recognizer
-│
-└── main.py             # Entry point
-```
+The objective is to build a robust streaming architecture capable of operating continuously without manual intervention.
 
 ---
 
-## How the Pipeline Works
+# 3. System Requirements
 
-Each processing unit is implemented as a **Stage** thread:
+## 3.1 Functional Requirements
 
-* reads from input queue
-* processes data
-* writes to output queue
+* Continuous microphone audio capture
+* Incremental speech recognition
+* Incremental translation
+* Real-time speech synthesis
+* Audible translated output
+* Live system monitoring dashboard
 
-The pipeline controller simply starts and stops all stages.
+## 3.2 Non-Functional Requirements
 
-Because stages do not depend on each other directly, they can be replaced or upgraded independently.
-
----
-
-## Running the Project
-
-### Install Dependencies
-
-```
-pip install sounddevice
-```
+* Fully offline operation
+* Bounded end-to-end latency
+* Stable execution for extended duration
+* Modular replaceable components
+* Thread-safe concurrent processing
+* Deterministic pipeline behavior
 
 ---
 
-### Run
+# 4. System Architecture
+
+## 4.1 Architectural Overview
+
+The system follows a modular streaming pipeline architecture:
 
 ```
-python main.py
+Microphone → ASR → Translation → TTS → Speaker
 ```
 
-Expected output:
-
-```
-Running pipeline...
-TEXT: recognized speech chunk
-TEXT: recognized speech chunk
-```
+Each stage operates independently and communicates via thread-safe queues. The architecture ensures loose coupling and replaceability of modules.
 
 ---
 
-## Development Roadmap
+## 4.2 Stage Description
 
-The system will be expanded incrementally to maintain stability.
+### 4.2.1 Microphone Input
+
+* Continuously captures raw audio frames
+* Streams audio chunks to ASR stage
+
+### 4.2.2 Automatic Speech Recognition (ASR)
+
+* Performs incremental transcription
+* Outputs partial and final text results
+* Supports streaming recognition
+
+### 4.2.3 Translation Module
+
+* Translates recognized text into target language
+* Accepts incremental input
+* Handles revision propagation
+
+### 4.2.4 Text-to-Speech (TTS)
+
+* Converts translated text to audio
+* Streams synthesized speech
+
+### 4.2.5 Speaker Output
+
+* Plays synthesized audio continuously
+* Ensures smooth playback buffering
 
 ---
+
+# 5. Concurrency Model
+
+Each pipeline stage executes in an independent thread. Communication occurs exclusively through thread-safe bounded queues.
+
+### Stage Interface Contract
+
+Each stage must:
+
+* Implement `process(input_data) → output_data`
+* Avoid blocking operations
+* Support graceful shutdown
+* Operate independently of other stages
+
+No stage directly invokes another stage.
+
+---
+
+# 6. Data Flow and Buffering Strategy
+
+## 6.1 Queue Strategy
+
+* Thread-safe queues connect stages
+* Bounded queue size prevents memory overflow
+* Backpressure handled via:
+
+  * Dropping oldest entries, or
+  * Temporarily slowing upstream stages
+
+## 6.2 Audio Chunking
+
+Audio is processed in fixed-size blocks to balance:
+
+* Latency
+* Processing overhead
+* Throughput stability
+
+---
+
+# 7. Latency Model
+
+Total End-to-End Latency is defined as:
+
+```
+Total Latency =
+Audio Capture Delay +
+ASR Processing Delay +
+Translation Delay +
+TTS Synthesis Delay +
+Playback Buffer Delay
+```
+
+Each stage independently measures:
+
+* Input timestamp
+* Processing start time
+* Processing completion time
+* Output dispatch time
+
+These metrics are used for per-stage and overall latency reporting.
+
+---
+
+# 8. Offline Execution Strategy
+
+All components operate locally without cloud dependency:
+
+* ASR: Vosk (offline model)
+* Translation: Argos Translate / Marian
+* TTS: Coqui TTS / eSpeak
+
+No external API calls are used during runtime.
+
+---
+
+# 9. Fault Tolerance Strategy
+
+The system includes:
+
+* Stage isolation (failure in one stage does not crash pipeline)
+* Timeout detection for stalled stages
+* Graceful shutdown support
+* Error reporting to dashboard
+* Optional restart mechanisms
+
+---
+
+# 10. Dashboard and Observability
+
+A real-time dashboard provides visibility into system behavior. It displays:
+
+* Audio activity indicator
+* Partial and final transcription
+* Partial and final translation
+* Per-stage latency
+* End-to-end latency
+* Stage liveness indicators
+
+The dashboard enables transparent system evaluation without requiring log inspection.
+
+---
+
+# 11. Evaluation Plan
+
+The system will be evaluated using the following metrics:
+
+## 11.1 Performance Metrics
+
+* End-to-end latency
+* Per-stage latency breakdown
+* CPU utilization
+* Memory consumption
+
+## 11.2 Functional Evaluation
+
+* Translation correctness (manual verification)
+* Stability under continuous speech
+* Handling of long sentences
+* Behavior under moderate background noise
+
+## 11.3 Stability Testing
+
+* Continuous operation for ≥ 10 minutes
+* No deadlocks
+* No memory growth over time
+
+---
+
+# 12. Development Roadmap
 
 ### Phase 1 — Infrastructure
 
-* Pipeline engine
-* Threaded stages
+* Implement pipeline engine
+* Thread-based stage execution
 * Streaming queues
 * Microphone capture
-* Dummy recognizer
+* Dummy ASR
 
----
+### Phase 2 — Real ASR Integration
 
-### Phase 2 — Real Speech Recognition
+* Integrate streaming offline recognizer
+* Validate transcription latency
 
-Replace dummy recognizer with real streaming ASR:
+### Phase 3 — Translation Integration
 
-Recommended options:
-
-* Vosk (offline, lightweight)
-* Whisper streaming
-* DeepSpeech
-
----
-
-### Phase 3 — Translation Stage
-
-Add translation module:
-
-```
-Mic → ASR → Translation → Console
-```
-
-Requirements:
-
-* incremental translation
-* revision handling
-* low latency
-
----
+* Add incremental translation stage
+* Handle revision propagation
 
 ### Phase 4 — Speech Synthesis
 
-Add TTS module:
+* Integrate TTS
+* Ensure smooth playback
 
-```
-Mic → ASR → Translation → TTS → Speaker
-```
+### Phase 5 — Dashboard Integration
 
-Requirements:
-
-* real-time audio playback
-* buffering
-* smooth streaming
-
----
-
-### Phase 5 — Dashboard
-
-Add live system monitor showing:
-
-* audio activity
-* partial transcripts
-* translation updates
-* per-stage latency
-* pipeline health
-
----
+* Add runtime monitoring
+* Add latency measurement
 
 ### Phase 6 — Optimization
 
-Final system improvements:
-
-* latency tuning
-* concurrency optimization
-* queue sizing
-* stability testing
-* stress testing
+* Tune queue sizes
+* Reduce latency
+* Stress testing
 
 ---
 
-## Why This Architecture?
+# 13. Privacy Considerations
 
-Real-time speech systems fail most often because of poor pipeline design, not model accuracy.
-
-This architecture ensures:
-
-* non-blocking execution
-* predictable latency
-* independent module testing
-* easy debugging
-* flexible upgrades
+* All processing occurs locally
+* No audio data is transmitted externally
+* No permanent storage of audio unless explicitly enabled
 
 ---
 
-## Technical Considerations
-# Latency
-The system needs to minimize latency at each stage to enable near real-time communication. Optimizations will be implemented at the queue level and within the stages to balance throughput and response time.
+# 14. Known Limitations
 
-# Concurrency
-To handle real-time processing, each stage will run in its own thread, with communication via thread-safe queues. Proper synchronization mechanisms will be used to avoid race conditions.
+* Incremental translation may cause revision artifacts
+* Latency increases for long sentences
+* Performance depends on model efficiency
+* Noise robustness limited without preprocessing
 
-# Fault Tolerance
-The system should handle failure gracefully. For example:
-  If the ASR module fails, it should fall back to a backup recognizer or output a failure message.
-  The pipeline should allow dynamic stage replacement without restarting the entire system.
+---
 
-## Additional Optional Features
+# 15. Conclusion
 
-### Scalability and Multi-User Support
-To handle higher traffic or simultaneous conversations.
+This project presents a modular, concurrent, and observable real-time speech-to-speech translation system. The design emphasizes streaming architecture, offline operation, bounded latency, and system-level robustness.
 
-### Dynamic Language Switching
-The system will be able to switch between languages dynamically if the user changes languages mid-conversation.
-
-### Audio Preprocessing and Noise Reduction
-To enhance speech recognition accuracy, a **preprocessing stage** for noise cancellation, echo reduction, and volume normalization will be implemented before the audio enters the ASR stage.
-
-### Privacy and Security Considerations
-All audio data will be encrypted in transit and at rest. Additionally, user consent will be required before audio data is processed, and users will have the option to delete their data upon request.
-
-
-## The "Hello World" Test Sequence
-
-To verify the pipeline is "Live," we will try to use a three-step validation:
-
-1.  **Level 1 (Audio):** `Mic -> Speaker` (Loopback test: Do you hear yourself?)
-2.  **Level 2 (Text):** `Mic -> ASR -> Console` (Transcription test: Do you see your words?)
-3.  **Level 3 (Full):** `Mic -> ASR -> Translation -> TTS -> Speaker` (The full loop).
+Rather than focusing solely on model accuracy, the project demonstrates disciplined systems engineering for real-time language processing.
