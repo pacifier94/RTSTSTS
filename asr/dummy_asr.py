@@ -10,7 +10,7 @@ class DummyASR(Stage):
             return None
 
         if isinstance(audio_chunk, np.ndarray) and audio_chunk.size > 0:
-            time.sleep(0.2)  # simulate processing
+            time.sleep(0.2)  
             return "recognized speech chunk"
 
         return None
