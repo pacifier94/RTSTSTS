@@ -42,7 +42,7 @@ This makes the system extensible, testable, and easy to debug.
 The current version implements a minimal working real-time pipeline:
 
 ```
-Microphone → Dummy ASR → Console Output
+Microphone → vosk ASR → Console Output
 ```
 
 Features implemented:
@@ -97,6 +97,7 @@ Because stages do not depend on each other directly, they can be replaced or upg
 
 ```
 pip install sounddevice
+pip install vosk
 ```
 
 ---
