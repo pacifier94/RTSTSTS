@@ -5,7 +5,7 @@ import logging
 from core.pipeline import Pipeline
 from audio.mic import MicStage
 from asr.dummy_asr import DummyASR
-
+from translate.argos_stage import ArgosStage
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
