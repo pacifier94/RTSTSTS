@@ -12,11 +12,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Create the audio and text queues
 audio_q = queue.Queue()
 text_q = queue.Queue()
-
+translated_q = queue.Queue()
 # Set up the stages
 mic = MicStage(audio_q)
-asr = DummyASR("ASR", audio_q, text_q)
-
+asr = VoskASR(
+    input_q=audio_q,
+    output_q=text_q,
+    model_path="vosk-model-small-hi-0.22"
+)
 # Create the pipeline with the stages
 pipeline = Pipeline([mic, asr])
 
