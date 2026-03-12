@@ -14,6 +14,7 @@ class MicStage(Stage):
             if status:
                 print(status)
 
+            # Convert safely to numpy array
             audio_chunk = np.array(indata, copy=True)
 
             self.output_q.put(audio_chunk)
