@@ -21,8 +21,12 @@ asr = VoskASR(
     output_q=text_q,
     model_path="vosk-model-small-hi-0.22"
 )
+translator = ArgosStage(
+    input_q=text_q,
+    output_q=translated_q
+)
 # Create the pipeline with the stages
-pipeline = Pipeline([mic, asr])
+pipeline = Pipeline([mic, asr,translator])
 
 # Start the pipeline
 logging.info("Running pipeline... Ctrl+C to stop")
