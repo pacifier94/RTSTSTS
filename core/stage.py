@@ -1,5 +1,6 @@
 import threading
 import queue
+import queue
 
 class Stage(threading.Thread):
     def __init__(self, name, input_q=None, output_q=None):
@@ -32,8 +33,7 @@ class Stage(threading.Thread):
 
     def stop(self):
         self._stop_event.set()import threading
-import queue
-import time
+
 
 class Stage(threading.Thread):
     def __init__(self, name, input_q=None, output_q=None):
