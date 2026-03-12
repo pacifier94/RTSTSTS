@@ -1,6 +1,6 @@
 import threading
 import queue
-import queue
+import time
 
 class Stage(threading.Thread):
     def __init__(self, name, input_q=None, output_q=None):
