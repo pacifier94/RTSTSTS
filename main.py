@@ -1,53 +1,38 @@
 import queue
-import time
 import logging
-
+import time
 from core.pipeline import Pipeline
 from audio.mic import MicStage
-from asr.dummy_asr import DummyASR
-from asr.vosk_asr import VoskASR
-from translate.argos_stage import ArgosStage
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from asr.vosk_asr import VoskASR 
+from translator.offline_translator import OfflineTranslatorStage
 
-# Create the audio and text queues
-audio_q = queue.Queue()
-text_q = queue.Queue()
-translated_q = queue.Queue()
-# Set up the stages
-mic = MicStage(audio_q)
-asr = VoskASR(
-    input_q=audio_q,
-    output_q=text_q,
-    model_path="vosk-model-small-hi-0.22"
-)
-translator = ArgosStage(
-    input_q=text_q,
-    output_q=translated_q
-)
-# Create the pipeline with the stages
-pipeline = Pipeline([mic, asr,translator])
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-# Start the pipeline
-logging.info("Running pipeline... Ctrl+C to stop")
+audio_q = queue.Queue(maxsize=100) # Mic -> ASR
+text_q = queue.Queue(maxsize=50)   # ASR -> Translator
+trans_q = queue.Queue(maxsize=50)  # Translator -> Main Loop (The missing one!)
+
+mic = MicStage(audio_q, samplerate=16000)
+asr = VoskASR(audio_q, text_q, model_path="vosk-model-small-en-in-0.4")
+translator = OfflineTranslatorStage(text_q, trans_q, from_code='en', to_code='hi')
+
+pipeline = Pipeline([mic, asr])
+logging.info("--- Pipeline Started: Speak into the mic! ---")
 pipeline.start()
 
 try:
     while True:
-        if not text_q.empty():
-            recognized_text = text_q.get()
-            logging.info(f"TEXT: {recognized_text}")
-        else:
-            # Provide real-time feedback when the pipeline is idle
-            logging.debug("Waiting for audio input...")
-        time.sleep(0.1)
+        # 1. ONLY print the final translated result here
+        if not trans_q.empty():
+            res = trans_q.get()
+            print(f"\n" + "="*30)
+            print(f"ENGLISH: {res['original']}")
+            print(f"HINDI  : {res['translated']}")
+            print("="*30 + "\n")
+        
+        time.sleep(0.01)
 
 except KeyboardInterrupt:
-    logging.info("Stopping pipeline...")
+    logging.info("\nShutting down...")
     pipeline.stop()
-    logging.info("Stopped")
 
-except Exception as e:
-    logging.error(f"An error occurred: {e}")
-    pipeline.stop()
-    logging.info("Pipeline stopped due to error.")
