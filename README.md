@@ -6,7 +6,7 @@ Guide:
 Professor Kolin Paul
 
 Team Members:
-Astitwa Saxsena 2025MCS3005
+Astitwa Saxena 2025MCS3005
 Abhishek Gupta 2025MCS2963
 
 ---
