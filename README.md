@@ -52,6 +52,7 @@ Features implemented:
 * Streaming queues between modules
 * Live microphone capture
 * Simulated ASR module
+* integrated VOSK module
 
 This version validates the real-time infrastructure before integrating heavy models.
 
