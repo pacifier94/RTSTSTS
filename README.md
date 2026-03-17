@@ -45,6 +45,8 @@ The current version implements a minimal working real-time pipeline:
 Microphone → vosk ASR → Console Output
 ```
 
+Python version 3.11.0
+
 Features implemented:
 
 * Concurrent pipeline engine
