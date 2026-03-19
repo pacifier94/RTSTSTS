@@ -5,15 +5,17 @@ import logging
 from core.pipeline import Pipeline
 from audio.mic import MicStage
 from asr.vosk_asr import VoskASR
+
 from translate.argos_stage import ArgosStage
+
 from tts.espeak_stage import EspeakStage
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Create the audio and text queues
-audio_q = queue.Queue()
-text_q = queue.Queue()
-translated_q = queue.Queue()
+audio_q = queue.Queue(maxsize=50)
+text_q = queue.Queue(maxsize=50)
+translated_q = queue.Queue(maxsize=50)
 # Set up the stages
 mic = MicStage(audio_q)
 asr = VoskASR(
