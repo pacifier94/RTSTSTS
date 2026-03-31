@@ -1,216 +1,129 @@
-package com.example.translator1
+package com.example.speechtospeech
 
 import android.content.Context
+import android.speech.tts.TextToSpeech
 import android.util.Log
-import ai.onnxruntime.*
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStreamReader
-import java.nio.LongBuffer
+import org.vosk.Model
+import org.vosk.Recognizer
+import java.io.IOException
+import java.util.Locale
 
-class TranslatorManager(
-    private val context: Context,
-    private val modelDirName: String
-) {
+class TranslationManager(private val context: Context) {
 
-    private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
-    private val encoderSession: OrtSession
-    private val decoderSession: OrtSession
+    private var model: Model? = null
+    private var recognizer: Recognizer? = null
+    private var tts: TextToSpeech? = null
 
-    private val vocab: Map<String, Int>
-    private val idToPiece: Map<Int, String>
+    private val sampleRate = 16000.0f
 
     init {
-        val modelDir = copyAssetFolder(modelDirName)
-
-        encoderSession = env.createSession(File(modelDir, "encoder_model.onnx").absolutePath)
-        decoderSession = env.createSession(File(modelDir, "decoder_model.onnx").absolutePath)
-
-        val vocabFile = File(modelDir, "vocab.json")
-        vocab = loadVocab(vocabFile)
-        idToPiece = vocab.entries.associate { it.value to it.key }
-
-        Log.d("TRANSLATOR", "$modelDirName model loaded (${vocab.size} tokens)")
+        initTTS()
     }
 
-    fun translate(text: String): String {
-        Log.d("TRANSLATOR", "Input ($modelDirName): $text")
-
-        val inputIds = encode(text)
-
-        val (encoderHidden, encoderMask) = runEncoder(inputIds)
-
-        val outputTokens = runDecoder(encoderHidden, encoderMask)
-
-        val result = decode(outputTokens)
-
-        Log.d("TRANSLATOR", "Output ($modelDirName): $result")
-
-        encoderHidden.close()
-        encoderMask.close()
-
-        return result
+    // ---------------------------
+    // Initialize Vosk Model
+    // ---------------------------
+    fun initSTT(modelPath: String) {
+        try {
+            model = Model(modelPath)
+            recognizer = Recognizer(model, sampleRate)
+        } catch (e: IOException) {
+            Log.e("TranslationManager", "Error initializing Vosk model: ${e.message}")
+        }
     }
 
-    // ====================== Encode ======================
-    private fun encode(text: String): LongArray {
-
-        val normalized = text.trim()
-
-        val ids = mutableListOf<Long>()
-        ids.add(0L) // BOS
-
-        // Try full sentence lookup first
-        if (vocab.containsKey(normalized)) {
-            ids.add(vocab[normalized]!!.toLong())
-        } else {
-            // fallback: character-level (better than broken regex)
-            for (ch in normalized) {
-                val piece = ch.toString()
-                ids.add(vocab[piece]?.toLong() ?: vocab.getOrDefault("<unk>", 3).toLong())
+    // ---------------------------
+    // Initialize Text-to-Speech
+    // ---------------------------
+    private fun initTTS() {
+        tts = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                // Bengali output
+                val result = tts?.setLanguage(Locale("bn", "IN"))
+                if (result == TextToSpeech.LANG_MISSING_DATA ||
+                    result == TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
+                    Log.e("TranslationManager", "Bengali TTS not supported")
+                }
+            } else {
+                Log.e("TranslationManager", "TTS Initialization failed")
             }
         }
-
-        ids.add(2L) // EOS
-
-        return ids.toLongArray()
     }
 
-    // ====================== Decode ======================
-    private fun decode(tokens: List<Int>): String {
-        val pieces = tokens.mapNotNull { idToPiece[it] }
-            .filter { it != "</s>" && it != "<s>" && it != "<pad>" }
-
-        return pieces.joinToString(" ")
-            .replace("▁", " ")
-            .trim()
+    // ---------------------------
+    // Process Audio Input (Vosk)
+    // ---------------------------
+    fun processAudio(data: ByteArray, length: Int): String? {
+        recognizer?.let {
+            return if (it.acceptWaveForm(data, length)) {
+                val result = it.result
+                extractText(result)
+            } else {
+                null
+            }
+        }
+        return null
     }
 
-    private fun loadVocab(vocabFile: File): Map<String, Int> {
-        val gson = Gson()
-        val type = object : TypeToken<Map<String, Int>>() {}.type
-        InputStreamReader(vocabFile.inputStream()).use { reader ->
-            return gson.fromJson(reader, type)
+    // ---------------------------
+    // Extract text from Vosk JSON
+    // ---------------------------
+    private fun extractText(json: String): String {
+        // Simple parsing (better use Gson in production)
+        return try {
+            val regex = """"text"\s*:\s*"([^"]*)"""".toRegex()
+            regex.find(json)?.groups?.get(1)?.value ?: ""
+        } catch (e: Exception) {
+            ""
         }
     }
 
-    // ====================== Encoder ======================
-    private fun runEncoder(inputIds: LongArray): Pair<OnnxTensor, OnnxTensor> {
-        val seqLen = inputIds.size.toLong()
-        val shape = longArrayOf(1L, seqLen)
+    // ---------------------------
+    // Translate Hindi → Bengali
+    // ---------------------------
+    fun translateHindiToBengali(input: String): String {
+        // Placeholder logic
+        // Replace with ML Kit / API later
 
-        val attentionMask = LongArray(inputIds.size) { 1L }
-
-        val inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(inputIds), shape)
-        val maskTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(attentionMask), shape)
-
-        val inputs = mapOf(
-            "input_ids" to inputTensor,
-            "attention_mask" to maskTensor
+        val dictionary = mapOf(
+            "नमस्ते" to "নমস্কার",
+            "आप कैसे हैं" to "আপনি কেমন আছেন",
+            "धन्यवाद" to "ধন্যবাদ"
         )
 
-        val result = encoderSession.run(inputs)
-
-        @Suppress("UNCHECKED_CAST")
-        val hiddenStates = result[0].value as Array<Array<FloatArray>>
-
-        inputTensor.close()
-        result.close()
-
-        val hiddenTensor = OnnxTensor.createTensor(env, hiddenStates)
-
-        return Pair(hiddenTensor, maskTensor)
+        return dictionary[input] ?: "[अनुवाद उपलब्ध नहीं]"
     }
 
-    // ====================== Decoder ======================
-    private fun runDecoder(
-        encoderHidden: OnnxTensor,
-        encoderMask: OnnxTensor
-    ): List<Int> {
-
-        val tokens = mutableListOf<Int>()
-        var decoderInput = intArrayOf(0) // BOS
-        val MAX_LENGTH = 120
-
-        for (i in 0 until MAX_LENGTH) {
-
-            val shape = longArrayOf(1L, decoderInput.size.toLong())
-
-            val decoderTensor = OnnxTensor.createTensor(
-                env,
-                LongBuffer.wrap(decoderInput.map { it.toLong() }.toLongArray()),
-                shape
-            )
-
-            val inputs = mapOf(
-                "input_ids" to decoderTensor,
-                "encoder_hidden_states" to encoderHidden,
-                "encoder_attention_mask" to encoderMask // ✅ FIX
-            )
-
-            val output = decoderSession.run(inputs)
-
-            @Suppress("UNCHECKED_CAST")
-            val logits = output[0].value as Array<Array<FloatArray>>
-
-            val lastLogits = logits[0][decoderInput.size - 1]
-
-            val nextToken = argmax(lastLogits)
-
-            decoderTensor.close()
-            output.close()
-
-            if (nextToken == 2) break
-
-            tokens.add(nextToken)
-            decoderInput += nextToken
-        }
-
-        return tokens
+    // ---------------------------
+    // Speak Output
+    // ---------------------------
+    fun speak(text: String) {
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
-    private fun argmax(array: FloatArray): Int {
-        var maxIndex = 0
-        var maxValue = array[0]
+    // ---------------------------
+    // Full Pipeline
+    // ---------------------------
+    fun handleSpeechInput(audioData: ByteArray, length: Int) {
+        val hindiText = processAudio(audioData, length)
 
-        for (i in 1 until array.size) {
-            if (array[i] > maxValue) {
-                maxValue = array[i]
-                maxIndex = i
-            }
+        hindiText?.let {
+            Log.d("TranslationManager", "Recognized Hindi: $it")
+
+            val bengaliText = translateHindiToBengali(it)
+            Log.d("TranslationManager", "Translated Bengali: $bengaliText")
+
+            speak(bengaliText)
         }
-        return maxIndex
     }
 
-    // ====================== Asset Copy ======================
-    private fun copyAssetFolder(assetPath: String): File {
-        val dest = File(context.filesDir, assetPath)
-        if (!dest.exists()) {
-            dest.mkdirs()
-            copyAssets(assetPath, dest)
-        }
-        return dest
-    }
-
-    private fun copyAssets(assetFolder: String, dest: File) {
-        val files = context.assets.list(assetFolder) ?: return
-        if (!dest.exists()) dest.mkdirs()
-
-        for (fileName in files) {
-            val path = "$assetFolder/$fileName"
-            val outFile = File(dest, fileName)
-
-            if (context.assets.list(path)?.isNotEmpty() == true) {
-                copyAssets(path, outFile)
-            } else {
-                context.assets.open(path).use { input ->
-                    FileOutputStream(outFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            }
-        }
+    // ---------------------------
+    // Cleanup
+    // ---------------------------
+    fun shutdown() {
+        recognizer?.close()
+        model?.close()
+        tts?.shutdown()
     }
 }
