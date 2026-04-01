@@ -1,129 +1,148 @@
 package com.example.speechtospeech
 
 import android.content.Context
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import com.google.gson.Gson
+import com.google.mlkit.nl.translate.*
+import kotlinx.coroutines.*
 import org.vosk.Model
 import org.vosk.Recognizer
-import java.io.IOException
-import java.util.Locale
+import java.io.File
+import java.util.*
 
 class TranslationManager(private val context: Context) {
 
     private var model: Model? = null
     private var recognizer: Recognizer? = null
     private var tts: TextToSpeech? = null
+    private var translator: Translator? = null
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val sampleRate = 16000.0f
 
     init {
         initTTS()
+        initTranslator()
     }
 
     // ---------------------------
-    // Initialize Vosk Model
+    // INIT VOSK (with asset copy)
     // ---------------------------
     fun initSTT(modelPath: String) {
         try {
-            model = Model(modelPath)
+            val modelDir = File(modelPath)
+            model = Model(modelDir.absolutePath)
             recognizer = Recognizer(model, sampleRate)
-        } catch (e: IOException) {
-            Log.e("TranslationManager", "Error initializing Vosk model: ${e.message}")
+        } catch (e: Exception) {
+            Log.e("TM", "Vosk init error: ${e.message}")
         }
     }
 
     // ---------------------------
-    // Initialize Text-to-Speech
+    // INIT ML KIT TRANSLATOR
+    // ---------------------------
+    private fun initTranslator() {
+        val options = TranslatorOptions.Builder()
+            .setSourceLanguage(TranslateLanguage.HINDI)
+            .setTargetLanguage(TranslateLanguage.BENGALI)
+            .build()
+
+        translator = Translation.getClient(options)
+
+        translator?.downloadModelIfNeeded()
+            ?.addOnSuccessListener {
+                Log.d("TM", "Translation model ready")
+            }
+            ?.addOnFailureListener {
+                Log.e("TM", "Model download failed: ${it.message}")
+            }
+    }
+
+    // ---------------------------
+    // INIT TTS
     // ---------------------------
     private fun initTTS() {
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                // Bengali output
                 val result = tts?.setLanguage(Locale("bn", "IN"))
-                if (result == TextToSpeech.LANG_MISSING_DATA ||
-                    result == TextToSpeech.LANG_NOT_SUPPORTED
-                ) {
-                    Log.e("TranslationManager", "Bengali TTS not supported")
+                if (result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    tts?.setLanguage(Locale.ENGLISH) // fallback
                 }
-            } else {
-                Log.e("TranslationManager", "TTS Initialization failed")
             }
         }
     }
 
     // ---------------------------
-    // Process Audio Input (Vosk)
+    // PROCESS AUDIO (REAL-TIME)
     // ---------------------------
-    fun processAudio(data: ByteArray, length: Int): String? {
-        recognizer?.let {
-            return if (it.acceptWaveForm(data, length)) {
-                val result = it.result
-                extractText(result)
-            } else {
-                null
-            }
+    fun processAudio(data: ByteArray, length: Int, onResult: (String) -> Unit) {
+        val rec = recognizer ?: return
+
+        if (rec.acceptWaveForm(data, length)) {
+            val text = extractText(rec.result)
+            if (text.isNotEmpty()) onResult(text)
+        } else {
+            val partial = extractText(rec.partialResult)
+            if (partial.isNotEmpty()) onResult(partial)
         }
-        return null
     }
 
     // ---------------------------
-    // Extract text from Vosk JSON
+    // JSON PARSER (SAFE)
     // ---------------------------
+    data class VoskResult(val text: String = "", val partial: String = "")
+
     private fun extractText(json: String): String {
-        // Simple parsing (better use Gson in production)
         return try {
-            val regex = """"text"\s*:\s*"([^"]*)"""".toRegex()
-            regex.find(json)?.groups?.get(1)?.value ?: ""
+            val res = Gson().fromJson(json, VoskResult::class.java)
+            res.text.ifEmpty { res.partial }
         } catch (e: Exception) {
             ""
         }
     }
 
     // ---------------------------
-    // Translate Hindi → Bengali
+    // TRANSLATE + SPEAK (ASYNC)
     // ---------------------------
-    fun translateHindiToBengali(input: String): String {
-        // Placeholder logic
-        // Replace with ML Kit / API later
+    fun translateAndSpeak(input: String, onTranslated: (String) -> Unit) {
+        val trans = translator ?: return
 
-        val dictionary = mapOf(
-            "नमस्ते" to "নমস্কার",
-            "आप कैसे हैं" to "আপনি কেমন আছেন",
-            "धन्यवाद" to "ধন্যবাদ"
-        )
-
-        return dictionary[input] ?: "[अनुवाद उपलब्ध नहीं]"
-    }
-
-    // ---------------------------
-    // Speak Output
-    // ---------------------------
-    fun speak(text: String) {
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
-    }
-
-    // ---------------------------
-    // Full Pipeline
-    // ---------------------------
-    fun handleSpeechInput(audioData: ByteArray, length: Int) {
-        val hindiText = processAudio(audioData, length)
-
-        hindiText?.let {
-            Log.d("TranslationManager", "Recognized Hindi: $it")
-
-            val bengaliText = translateHindiToBengali(it)
-            Log.d("TranslationManager", "Translated Bengali: $bengaliText")
-
-            speak(bengaliText)
+        scope.launch {
+            try {
+                trans.translate(input)
+                    .addOnSuccessListener { translated ->
+                        onTranslated(translated)
+                        speak(translated)
+                    }
+                    .addOnFailureListener {
+                        Log.e("TM", "Translation failed")
+                    }
+            } catch (e: Exception) {
+                Log.e("TM", "Error: ${e.message}")
+            }
         }
     }
 
     // ---------------------------
-    // Cleanup
+    // SPEAK
+    // ---------------------------
+    private fun speak(text: String) {
+        val bundle = Bundle().apply {
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+        }
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, bundle, "tts1")
+    }
+
+    // ---------------------------
+    // CLEANUP
     // ---------------------------
     fun shutdown() {
+        scope.cancel()
         recognizer?.close()
         model?.close()
+        translator?.close()
         tts?.shutdown()
     }
 }
