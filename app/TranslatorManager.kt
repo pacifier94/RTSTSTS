@@ -1,47 +1,101 @@
-package com.example.speechtospeech
+package com.example.offlinetranslator
 
-import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.*
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
-import android.util.Log
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.mlkit.nl.translate.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import org.vosk.Model
 import org.vosk.Recognizer
 import java.io.File
+import java.io.FileOutputStream
 import java.util.*
 
-class TranslationManager(private val context: Context) {
+class MainActivity : ComponentActivity() {
 
+    // ---------------------------
+    // CORE
+    // ---------------------------
     private var model: Model? = null
     private var recognizer: Recognizer? = null
-    private var tts: TextToSpeech? = null
     private var translator: Translator? = null
+    private var tts: TextToSpeech? = null
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val gson = Gson()
     private val sampleRate = 16000.0f
 
-    init {
-        initTTS()
-        initTranslator()
+    private lateinit var spokenView: TextView
+    private lateinit var translatedView: TextView
+
+    private var isRecording = true
+    private var lastSentence = ""
+
+    // ---------------------------
+    // ON CREATE
+    // ---------------------------
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // UI
+        spokenView = TextView(this)
+        translatedView = TextView(this)
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(spokenView)
+            addView(translatedView)
+        }
+
+        setContentView(layout)
+
+        // Permissions
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            1
+        )
+
+        initAll()
     }
 
     // ---------------------------
-    // INIT VOSK (with asset copy)
+    // INIT EVERYTHING
     // ---------------------------
-    fun initSTT(modelPath: String) {
-        try {
-            val modelDir = File(modelPath)
-            model = Model(modelDir.absolutePath)
-            recognizer = Recognizer(model, sampleRate)
-        } catch (e: Exception) {
-            Log.e("TM", "Vosk init error: ${e.message}")
+    private fun initAll() {
+        lifecycleScope.launch(Dispatchers.IO) {
+
+            copyModelIfNeeded()
+
+            initSTT()
+            initTranslator()
+            initTTS()
+
+            startMic()
         }
     }
 
     // ---------------------------
-    // INIT ML KIT TRANSLATOR
+    // VOSK INIT
+    // ---------------------------
+    private fun initSTT() {
+        val modelPath = File(filesDir, "vosk-model").absolutePath
+        model = Model(modelPath)
+        recognizer = Recognizer(model, sampleRate)
+    }
+
+    // ---------------------------
+    // TRANSLATOR INIT (OFFLINE)
     // ---------------------------
     private fun initTranslator() {
         val options = TranslatorOptions.Builder()
@@ -50,96 +104,150 @@ class TranslationManager(private val context: Context) {
             .build()
 
         translator = Translation.getClient(options)
-
-        translator?.downloadModelIfNeeded()
-            ?.addOnSuccessListener {
-                Log.d("TM", "Translation model ready")
-            }
-            ?.addOnFailureListener {
-                Log.e("TM", "Model download failed: ${it.message}")
-            }
     }
 
     // ---------------------------
-    // INIT TTS
+    // TTS INIT
     // ---------------------------
     private fun initTTS() {
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = tts?.setLanguage(Locale("bn", "IN"))
-                if (result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    tts?.setLanguage(Locale.ENGLISH) // fallback
+        tts = TextToSpeech(this) {
+            tts?.setLanguage(Locale("bn", "IN"))
+        }
+    }
+
+    // ---------------------------
+    // MIC LOOP
+    // ---------------------------
+    private fun startMic() {
+        val bufferSize = AudioRecord.getMinBufferSize(
+            16000,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+
+        val recorder = AudioRecord(
+            MediaRecorder.AudioSource.MIC,
+            16000,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSize
+        )
+
+        recorder.startRecording()
+
+        val buffer = ByteArray(bufferSize)
+
+        while (isRecording) {
+            val read = recorder.read(buffer, 0, buffer.size)
+            if (read > 0) {
+                processAudio(buffer, read)
+            }
+        }
+    }
+
+    // ---------------------------
+    // PROCESS AUDIO
+    // ---------------------------
+    private fun processAudio(data: ByteArray, length: Int) {
+        val rec = recognizer ?: return
+
+        val json = if (rec.acceptWaveForm(data, length)) {
+            rec.result
+        } else {
+            rec.partialResult
+        }
+
+        val text = extractText(json)
+
+        if (text.isNotEmpty()) {
+            runOnUiThread {
+                spokenView.text = "🎤 $text"
+            }
+
+            if (shouldTranslate(text)) {
+                lastSentence = text
+
+                lifecycleScope.launch {
+                    val translated = translate(text)
+                    translated?.let {
+                        runOnUiThread {
+                            translatedView.text = "🌐 $it"
+                        }
+                        speak(it)
+                    }
                 }
             }
         }
     }
 
     // ---------------------------
-    // PROCESS AUDIO (REAL-TIME)
+    // JSON PARSE
     // ---------------------------
-    fun processAudio(data: ByteArray, length: Int, onResult: (String) -> Unit) {
-        val rec = recognizer ?: return
-
-        if (rec.acceptWaveForm(data, length)) {
-            val text = extractText(rec.result)
-            if (text.isNotEmpty()) onResult(text)
-        } else {
-            val partial = extractText(rec.partialResult)
-            if (partial.isNotEmpty()) onResult(partial)
-        }
-    }
-
-    // ---------------------------
-    // JSON PARSER (SAFE)
-    // ---------------------------
-    data class VoskResult(val text: String = "", val partial: String = "")
-
     private fun extractText(json: String): String {
         return try {
-            val res = Gson().fromJson(json, VoskResult::class.java)
+            val res = gson.fromJson(json, VoskResult::class.java)
             res.text.ifEmpty { res.partial }
         } catch (e: Exception) {
             ""
         }
     }
 
-    // ---------------------------
-    // TRANSLATE + SPEAK (ASYNC)
-    // ---------------------------
-    fun translateAndSpeak(input: String, onTranslated: (String) -> Unit) {
-        val trans = translator ?: return
+    data class VoskResult(val text: String = "", val partial: String = "")
 
-        scope.launch {
-            try {
-                trans.translate(input)
-                    .addOnSuccessListener { translated ->
-                        onTranslated(translated)
-                        speak(translated)
-                    }
-                    .addOnFailureListener {
-                        Log.e("TM", "Translation failed")
-                    }
-            } catch (e: Exception) {
-                Log.e("TM", "Error: ${e.message}")
-            }
+    // ---------------------------
+    // TRANSLATE
+    // ---------------------------
+    private suspend fun translate(text: String): String? {
+        return try {
+            translator?.translate(text)?.await()
+        } catch (e: Exception) {
+            null
         }
     }
 
     // ---------------------------
     // SPEAK
     // ---------------------------
-    private fun speak(text: String) {
-        val bundle = Bundle().apply {
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+    private suspend fun speak(text: String) {
+        withContext(Dispatchers.Main) {
+            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "tts1")
         }
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, bundle, "tts1")
+    }
+
+    // ---------------------------
+    // SENTENCE DETECTION
+    // ---------------------------
+    private fun shouldTranslate(text: String): Boolean {
+        return text.length > 8 &&
+                text != lastSentence &&
+                (text.endsWith(".") || text.endsWith("।"))
+    }
+
+    // ---------------------------
+    // COPY MODEL FROM ASSETS
+    // ---------------------------
+    private fun copyModelIfNeeded() {
+        val dir = File(filesDir, "vosk-model")
+        if (dir.exists()) return
+
+        dir.mkdirs()
+        assets.list("vosk-model")?.forEach { file ->
+            val input = assets.open("vosk-model/$file")
+            val outFile = File(dir, file)
+            val output = FileOutputStream(outFile)
+
+            input.copyTo(output)
+            input.close()
+            output.close()
+        }
     }
 
     // ---------------------------
     // CLEANUP
     // ---------------------------
-    fun shutdown() {
-        scope.cancel()
+    override fun onDestroy() {
+        super.onDestroy()
+        isRecording = false
         recognizer?.close()
         model?.close()
         translator?.close()
