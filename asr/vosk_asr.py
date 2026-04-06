@@ -36,7 +36,9 @@ class VoskASR(Stage):
                 return None
 
             # Ignore very short noise (1-word junk)
-            if len(text.split()) < 3:
+            #if len(text.split()) < 3:
+            #    return None
+            if len(text) < 3:
                 return None
 
             # Cooldown to avoid repeated outputs
@@ -45,7 +47,11 @@ class VoskASR(Stage):
                 return None
 
             self.last_emit_time = current_time
-            return text
+            return {
+                "text": text,
+                "final": True,
+                "ts": time.time()
+            }
 
         # Ignore partial results completely
         return None
