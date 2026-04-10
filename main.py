@@ -103,6 +103,9 @@ class TranslatorApp(ctk.CTk):
     def update_threshold(self, val):
         self.threshold = float(val)
 
+        if hasattr(self, "mic"):
+            self.mic.threshold = self.threshold
+
     # -------- PIPELINE --------
     def setup_pipeline(self):
         self.audio_q = queue.Queue()
