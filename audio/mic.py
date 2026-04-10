@@ -8,7 +8,8 @@ class MicStage(Stage):
         super().__init__("MicStage", None, output_q)
         self.samplerate = samplerate
         self.blocksize = blocksize
-        self.ui_callback = ui_callback  # NEW
+        self.ui_callback = ui_callback 
+        self.threshold = threshold 
 
     def run(self):
         def callback(indata, frames, time, status):
@@ -34,6 +35,8 @@ class MicStage(Stage):
                 amplitude = float(np.sqrt(np.mean(audio_float**2)))
 
                 self.ui_callback(amplitude)
+                if amplitude > self.threshold:
+                    self.output_q.put(audio_chunk)
 
         with sd.InputStream(
             samplerate=self.samplerate,
