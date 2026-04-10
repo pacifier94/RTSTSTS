@@ -109,7 +109,7 @@ class TranslatorApp(ctk.CTk):
         self.text_q = queue.Queue()
         self.translated_q = queue.Queue()
 
-        self.mic = MicStage(self.audio_q, ui_callback=self.update_audio_level)
+        self.mic = MicStage(self.audio_q,ui_callback=self.update_audio_level,threshold=self.threshold)
         self.asr = VoskASR(self.audio_q, self.text_q, "vosk-model-small-hi-0.22")
 
         self.translator = ArgosStage(self.text_q, self.translated_q, self.trigger_ui_update)
