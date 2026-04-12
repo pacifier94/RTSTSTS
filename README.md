@@ -71,7 +71,10 @@ speech-pipeline/
 │   └── mic.py          # Microphone streaming input
 │
 ├── asr/
-│   └── dummy_asr.py    # Placeholder recognizer
+│   └── vosk_asr.py    # VOSK
+│
+├── translate/
+│   └── argos_stage.py    # Argos translation
 │
 └── main.py             # Entry point
 ```
