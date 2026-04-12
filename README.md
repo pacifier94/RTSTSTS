@@ -39,10 +39,10 @@ This makes the system extensible, testable, and easy to debug.
 
 ## Current Implementation Status
 
-The current version implements a minimal working real-time pipeline:
+The current version implements a working real-time pipeline:
 
 ```
-Microphone → vosk ASR → Console Output
+Microphone → vosk ASR → Output (speech + on-screen)
 ```
 
 Python version 3.11.0
@@ -50,14 +50,12 @@ Python version 3.11.0
 Features implemented:
 
 * Concurrent pipeline engine
-* Thread-based stage execution
 * Streaming queues between modules
 * Live microphone capture
-* Simulated ASR module
-* integrated VOSK module
-
-This version validates the real-time infrastructure before integrating heavy models.
-
+* VOSK ASR module
+* Translation
+* Text to speech
+* UI interface
 ---
 
 ## Repository Structure
