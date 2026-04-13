@@ -42,7 +42,7 @@ class TranslatorApp(ctk.CTk):
 
         ctk.CTkLabel(
             self.header,
-            text="🎙️ Real-Time Speech Translator",
+            text="Real-Time Speech Translator",
             font=("Arial", 32, "bold"),
             text_color="#38bdf8"
         ).pack(pady=(15, 5))
@@ -117,7 +117,7 @@ class TranslatorApp(ctk.CTk):
         self.status_frame = ctk.CTkFrame(self, fg_color="#020617")
         self.status_frame.pack(fill="x", padx=20, pady=10)
 
-        self.status_var = ctk.StringVar(value="● Ready")
+        self.status_var = ctk.StringVar(value="Ready")
         ctk.CTkLabel(self.status_frame, textvariable=self.status_var, text_color="#22c55e").pack(side="left", padx=10)
 
         self.latency_var = ctk.StringVar(value="Latency: 0.00s")
@@ -169,7 +169,7 @@ class TranslatorApp(ctk.CTk):
         self.hi_box.see("end")
         self.bn_box.see("end")
 
-        self.status_var.set("● Listening")
+        self.status_var.set("Listening")
         self.latency_var.set(f"Latency: {latency:.2f}s")
 
         self.latency_history.append(latency)
@@ -215,7 +215,7 @@ class TranslatorApp(ctk.CTk):
         if self.running:
             return
 
-        self.status_var.set("⏳ Loading...")
+        self.status_var.set("Loading...")
         self.start_btn.configure(state="disabled")
 
         def init():
@@ -223,9 +223,9 @@ class TranslatorApp(ctk.CTk):
                 self.setup_pipeline()
                 self.pipeline.start()
                 self.running = True
-                self.after(0, lambda: self.status_var.set("● Listening"))
+                self.after(0, lambda: self.status_var.set("Listening"))
             except Exception as e:
-                self.after(0, lambda: self.status_var.set(f"❌ {e}"))
+                self.after(0, lambda: self.status_var.set(f"Error: {e}"))
 
         threading.Thread(target=init, daemon=True).start()
 
@@ -234,7 +234,7 @@ class TranslatorApp(ctk.CTk):
             self.pipeline.stop()
 
         self.running = False
-        self.status_var.set("● Stopped")
+        self.status_var.set("Stopped")
         self.start_btn.configure(state="normal")
 
     def clear_text(self):
