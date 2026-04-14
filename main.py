@@ -230,12 +230,21 @@ class TranslatorApp(ctk.CTk):
         threading.Thread(target=init, daemon=True).start()
 
     def stop_system(self):
-        if hasattr(self, "pipeline"):
+        if hasattr(self, "pipeline") and self.running:
+            self.status_var.set("Stopping...")
+            
             self.pipeline.stop()
-
-        self.running = False
-        self.status_var.set("Stopped")
-        self.start_btn.configure(state="normal")
+            
+            self.stop_btn.configure(state="disabled")
+            
+            def finalize():
+                self.running = False
+                self.after(0, lambda: self.status_var.set("Stopped"))
+                self.after(0, lambda: self.start_btn.configure(state="normal"))
+                self.after(0, lambda: self.stop_btn.configure(state="normal"))
+    
+            threading.Thread(target=finalize, daemon=True).start()
+            
 
     def clear_text(self):
         self.hi_box.delete("0.0", "end")
