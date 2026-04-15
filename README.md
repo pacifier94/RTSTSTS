@@ -130,7 +130,7 @@ The system will be expanded incrementally to maintain stability.
 
 ---
 
-### Phase 1 — Infrastructure (Completed)
+### Phase 1 — Infrastructure 
 
 * Pipeline engine
 * Threaded stages
