@@ -103,7 +103,8 @@ class TranslatorApp(ctk.CTk):
         self.wave_canvas = ctk.CTkCanvas(self, height=80, bg="#020617", highlightthickness=0)
         self.wave_canvas.pack(fill="x", padx=20)
 
-        self.wave_data = deque([0]*60, maxlen=60)
+        #self.wave_data = deque([0]*60, maxlen=60)
+        self.wave_data = float(np.sqrt(np.mean(audio_chunk.astype(np.float32)**2)))
         self.after(100, self.update_waveform)
 
         # ---------------- LATENCY GRAPH ----------------
