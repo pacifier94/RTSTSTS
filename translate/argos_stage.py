@@ -1,4 +1,5 @@
 import argostranslate.translate
+
 from core.stage import Stage
 
 
@@ -17,8 +18,6 @@ class ArgosStage(Stage):
 
             if not text or not is_final:
                 return None
-
-            import argostranslate.translate
 
             langs = argostranslate.translate.get_installed_languages()
 
