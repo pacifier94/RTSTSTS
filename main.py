@@ -100,12 +100,23 @@ class TranslatorApp(ctk.CTk):
         self.bn_box.pack(expand=True, fill="both", padx=10, pady=10)
 
         # ---------------- WAVEFORM ----------------
-        self.wave_canvas = ctk.CTkCanvas(self, height=80, bg="#020617", highlightthickness=0)
-        self.wave_canvas.pack(fill="x", padx=20)
+        def update_waveform(self):
+    if self.running and not self.audio_q.empty():
+        audio_chunk = self.audio_q.get()
+        val = np.sqrt(np.mean(audio_chunk.astype(np.float32)**2))
+    else:
+        val = 0
 
-        #self.wave_data = deque([0]*60, maxlen=60)
-        self.wave_data = float(np.sqrt(np.mean(audio_chunk.astype(np.float32)**2)))
-        self.after(100, self.update_waveform)
+    self.wave_data.append(val)
+    self.wave_canvas.delete("all")
+    w = self.wave_canvas.winfo_width()
+    step = w / len(self.wave_data)
+
+    for i, v in enumerate(self.wave_data):
+        x = i * step
+        self.wave_canvas.create_line(x, 40 - v / 2, x, 40 + v / 2, fill="#22d3ee", width=2)
+
+    self.after(100, self.update_waveform)
 
         # ---------------- LATENCY GRAPH ----------------
         self.latency_canvas = ctk.CTkCanvas(self, height=100, bg="#020617", highlightthickness=0)
