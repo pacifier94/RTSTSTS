@@ -15,7 +15,7 @@ class VoskASR(Stage):
 
         # Prevent repeated triggers
         self.last_emit_time = 0
-        self.cooldown_seconds = 3  # minimum gap between outputs
+        self.cooldown_seconds = 1.2  # minimum gap between outputs
 
     def process(self, audio_chunk):
         if audio_chunk is None:
@@ -36,8 +36,10 @@ class VoskASR(Stage):
                 return None
 
             # Ignore very short noise (1-word junk)
-            if len(text) < 3:
-                return None
+            if len(text.split()) < 2:
+               return None
+            #if len(text) < 3:
+             #   return None
 
             # Cooldown to avoid repeated outputs
             current_time = time.time()
