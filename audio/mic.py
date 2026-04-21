@@ -4,7 +4,7 @@ from core.stage import Stage
 
 
 class MicStage(Stage):
-    def __init__(self, output_q, samplerate=16000, blocksize=1024, ui_callback=None):
+    def __init__(self, output_q, samplerate=16000, blocksize=2048, ui_callback=None):
         super().__init__("MicStage", None, output_q)
         self.samplerate = samplerate
         self.blocksize = blocksize
