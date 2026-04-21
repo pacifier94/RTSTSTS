@@ -13,45 +13,40 @@ class VoskASR(Stage):
         self.recognizer = KaldiRecognizer(self.model, 16000)
         self.recognizer.SetWords(True)
 
-        # Prevent repeated triggers
         self.last_emit_time = 0
-        self.cooldown_seconds = 1.2  # minimum gap between outputs
+        self.cooldown_seconds = 1.0
 
     def process(self, audio_chunk):
         if audio_chunk is None:
             return None
 
-        # Convert numpy array to bytes
         if isinstance(audio_chunk, np.ndarray):
             audio_bytes = audio_chunk.tobytes()
         else:
             audio_bytes = audio_chunk
 
+        # ONLY use AcceptWaveform (stable)
         if self.recognizer.AcceptWaveform(audio_bytes):
             result = json.loads(self.recognizer.Result())
             text = result.get("text", "").strip()
 
-            # Ignore empty results
-            if text == "":
+            if not text:
                 return None
 
-            # Ignore very short noise (1-word junk)
+            # ignore junk
             if len(text.split()) < 2:
-               return None
-            #if len(text) < 3:
-             #   return None
+                return None
 
-            # Cooldown to avoid repeated outputs
             current_time = time.time()
             if current_time - self.last_emit_time < self.cooldown_seconds:
                 return None
 
             self.last_emit_time = current_time
+
             return {
                 "text": text,
                 "final": True,
                 "ts": time.time()
             }
 
-        # Ignore partial results completely
         return None
