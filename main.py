@@ -137,21 +137,21 @@ class TranslatorApp(ctk.CTk):
                                       fg_color="#ef4444", hover_color="#dc2626")
         self.stop_btn.grid(row=0, column=1, padx=10)
 
-        self.clear_btn = ctk.CTkButton(self.btn_frame, text="🧹 Clear", command=self.clear_text,
-                                       fg_color="#334155", hover_color="#1e293b")
-        self.clear_btn.grid(row=0, column=2, padx=10)
-
+     
     # -------- CARD STYLE --------
     def create_card(self, parent, color):
         return ctk.CTkFrame(parent, fg_color=color, corner_radius=20)
 
     # -------- PIPELINE --------
     def setup_pipeline(self):
-        self.audio_q = queue.Queue()
+        self.audio_q = queue.Queue(maxsize=50)
         self.text_q = queue.Queue()
         self.translated_q = queue.Queue()
 
-        self.mic = MicStage(self.audio_q)
+        self.mic = MicStage(
+             self.audio_q,
+             ui_callback=self.update_audio_level
+            )
         self.asr = VoskASR(self.audio_q, self.text_q, "vosk-model-small-hi-0.22")
 
         self.translator = ArgosStage(
@@ -188,18 +188,23 @@ class TranslatorApp(ctk.CTk):
         self.after(500, self.blink_mic)
 
     def update_waveform(self):
-        val = random.randint(10, 70) if self.running else 0
-        self.wave_data.append(val)
-
         self.wave_canvas.delete("all")
+
         w = self.wave_canvas.winfo_width()
         step = w / len(self.wave_data)
 
+        # ensure waveform keeps moving
+        if not self.running:
+            self.wave_data.append(0)
+
         for i, v in enumerate(self.wave_data):
             x = i * step
-            self.wave_canvas.create_line(x, 40-v/2, x, 40+v/2, fill="#22d3ee", width=2)
+            self.wave_canvas.create_line(x, 40-v/2, x, 40+v/2, fill="#22d3ee")
 
         self.after(100, self.update_waveform)
+    
+    def update_audio_level(self, amplitude):
+        self.wave_data.append(amplitude * 100)
 
     def update_latency_graph(self):
         self.latency_canvas.delete("all")
@@ -221,7 +226,7 @@ class TranslatorApp(ctk.CTk):
         if self.running:
             return
 
-        self.status_var.set("⏳ Loading...")
+        self.status_var.set("Loading...")
         self.start_btn.configure(state="disabled")
 
         def init():
@@ -231,7 +236,7 @@ class TranslatorApp(ctk.CTk):
                 self.running = True
                 self.after(0, lambda: self.status_var.set("● Listening"))
             except Exception as e:
-              err = f"❌ {str(e)}"
+              err = f"{str(e)}"
               self.after(0, lambda: self.status_var.set(err))
 
         threading.Thread(target=init, daemon=True).start()
@@ -243,11 +248,7 @@ class TranslatorApp(ctk.CTk):
         self.running = False
         self.status_var.set("● Stopped")
         self.start_btn.configure(state="normal")
-
-    def clear_text(self):
-        self.hi_box.delete("0.0", "end")
-        self.bn_box.delete("0.0", "end")
-
+    
 
 if __name__ == "__main__":
     app = TranslatorApp()
