@@ -100,10 +100,11 @@ Because stages do not depend on each other directly, they can be replaced or upg
 ### Install Dependencies
 
 ```
-pip install sounddevice
-pip install vosk
-pip install indic_transliteration
-pip install customtkinter
+
+pip install -r requirements.txt
+
+sudo apt install espeak-ng
+
 ```
 
 ---
