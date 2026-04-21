@@ -1,0 +1,14 @@
+# Audio processing
+numpy
+sounddevice
+
+# Speech Recognition
+vosk
+
+# Translation 
+argostranslate
+indic_transliteration
+
+# GUI
+customtkinter
+
