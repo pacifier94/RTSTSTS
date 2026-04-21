@@ -1,7 +1,11 @@
 import sys
 import types
-
+import os
+import argostranslate.translate
+import argostranslate.settings
+from core.stage import Stage
 fake_stanza = types.ModuleType("stanza")
+argostranslate.settings.enable_sbd = False
 
 class DummySentence:
     def __init__(self, text):
@@ -22,14 +26,6 @@ fake_stanza.Pipeline = dummy_pipeline
 sys.modules['stanza'] = fake_stanza
 
 
-# NORMAL IMPORTS
-import os
-import argostranslate.translate
-import argostranslate.settings
-from core.stage import Stage
-
-argostranslate.settings.enable_sbd = False
-
 class ArgosStage(Stage):
     # Add ui_callback=None here to match the call in main.py
     def __init__(self, input_q, output_q, ui_callback=None):
@@ -37,8 +33,6 @@ class ArgosStage(Stage):
         self.ui_callback = ui_callback # Store it if you want to use it later
         self.hi_en = None
         self.en_bn = None
-        
-        # ... rest of your init code ...
         
         try:
             # 2. Get languages already on disk
@@ -53,13 +47,12 @@ class ArgosStage(Stage):
             # This is the line that triggers Stanza. 
             self.hi_en = hi.get_translation(en)
             self.en_bn = en.get_translation(bn)
-
             
         except Exception as e:
-            print(f"❌ ArgosStage Init Error: {e}")
+            print(f"ArgosStage Init Error: {e}")
 
     def process(self, data):
-        # If the links didn't load during __init__, don't even try
+       
         if data is None or self.hi_en is None:
             return None
 
