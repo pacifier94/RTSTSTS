@@ -1,5 +1,7 @@
+import queue
 import numpy as np
 import sounddevice as sd
+
 from shared_state import is_speaking
 from core.stage import Stage
 
@@ -15,13 +17,15 @@ class MicStage(Stage):
         def callback(indata, frames, time, status):
             if status:
                 print(status)
+
             if is_speaking.is_set():
-             return
+                return
+
             audio_chunk = np.array(indata, copy=True)
 
             # normalize
             audio_float = audio_chunk.astype(np.float32) / 32768.0
-            amplitude = float(np.sqrt(np.mean(audio_float**2)))
+            amplitude = float(np.sqrt(np.mean(audio_float ** 2)))
 
             # minimal noise filter
             if amplitude < 0.02:
@@ -29,8 +33,8 @@ class MicStage(Stage):
 
             try:
                 self.output_q.put_nowait(audio_chunk)
-            except:
-                pass
+            except queue.Full:
+                print("Mic queue full, dropping audio")
 
             if self.ui_callback:
                 self.ui_callback(amplitude)
