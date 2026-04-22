@@ -1,5 +1,7 @@
 import json
+import time
 import numpy as np
+
 from vosk import Model, KaldiRecognizer
 from core.stage import Stage
 
@@ -19,7 +21,6 @@ class VoskASR(Stage):
         if audio_chunk is None:
             return None
 
-        # convert to bytes
         if isinstance(audio_chunk, np.ndarray):
             audio_bytes = audio_chunk.tobytes()
         else:
@@ -29,29 +30,17 @@ class VoskASR(Stage):
             result = json.loads(self.recognizer.Result())
             text = result.get("text", "").strip()
 
-            # empty
             if not text:
                 return None
 
-            words = text.split()
-
-            # too short (noise)
-            if len(words) < 2:
+            # ignore noise
+            if len(text.split()) < 2:
                 return None
-
-            # too long (garbage hallucination)
-            if len(words) > 15:
-                return None
-
-            # duplicate
-            if text == self.last_text:
-                return None
-
-            self.last_text = text
 
             return {
                 "text": text,
-                "final": True
+                "final": True,
+                "ts": time.time(),
             }
 
         return None
