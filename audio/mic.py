@@ -30,7 +30,7 @@ class MicStage(Stage):
            
 
             # minimal noise filter
-            if amplitude < 0.0002:
+            if amplitude < 0.02:
                 return
 
             try:
