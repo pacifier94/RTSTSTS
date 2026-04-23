@@ -107,6 +107,8 @@ sudo apt install espeak-ng
 
 add to PATH C:\Program Files\eSpeak NG\
 
+python test/install_language.py
+
 ```
 
 ---
