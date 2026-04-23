@@ -12,3 +12,6 @@ indic_transliteration
 # GUI
 customtkinter
 
+
+PyInstaller
+
