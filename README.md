@@ -105,6 +105,8 @@ pip install -r requirements.txt
 
 sudo apt install espeak-ng
 
+add to PATH C:\Program Files\eSpeak NG\
+
 ```
 
 ---
