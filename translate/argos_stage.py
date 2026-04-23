@@ -1,80 +1,95 @@
+# --- FORCE DISABLE STANZA COMPLETELY (OFFLINE SAFE) ---
 import sys
 import types
-import os
-import argostranslate.translate
-import argostranslate.settings
-from core.stage import Stage
+
 fake_stanza = types.ModuleType("stanza")
-argostranslate.settings.enable_sbd = False
 
-class DummySentence:
-    def __init__(self, text):
-        self.text = text
 
-class DummyDoc:
-    def __init__(self, text):
-        self.sentences = [DummySentence(text)]
+class DummyPipeline:
+    def __init__(self, *args, **kwargs):
+        pass
 
-def dummy_pipeline(*args, **kwargs):
-    class Dummy:
-        def __call__(self, text):
-            return DummyDoc(text)
-    return Dummy()
+    def __call__(self, text):
+        class Doc:
+            def __init__(self, text):
+                self.sentences = [type("Sent", (), {"text": text})()]
 
-fake_stanza.Pipeline = dummy_pipeline
+        return Doc(text)
 
-sys.modules['stanza'] = fake_stanza
+
+fake_stanza.Pipeline = DummyPipeline
+sys.modules["stanza"] = fake_stanza
+
+
+# --- ARGOS IMPORTS (AFTER PATCH) ---
+import argostranslate.package
+
+argostranslate.package.update_package_index = lambda: None
+
+import argostranslate.translate
+
+
+# --- PIPELINE STAGE ---
+from core.stage import Stage
 
 
 class ArgosStage(Stage):
-    # Add ui_callback=None here to match the call in main.py
     def __init__(self, input_q, output_q, ui_callback=None):
         super().__init__("Translation", input_q, output_q)
-        self.ui_callback = ui_callback # Store it if you want to use it later
+
+        self.ui_callback = ui_callback
         self.hi_en = None
         self.en_bn = None
-        
+
         try:
-            # 2. Get languages already on disk
             langs = argostranslate.translate.get_installed_languages()
-            
-            # Find the nodes
+            print("Available:", [l.code for l in langs])
+
             hi = next(l for l in langs if l.code == "hi")
             en = next(l for l in langs if l.code == "en")
             bn = next(l for l in langs if l.code == "bn")
 
-            # 3. Pre-load the translation links
-            # This is the line that triggers Stanza. 
+            print("Loading HI → EN...")
             self.hi_en = hi.get_translation(en)
+
+            print("Loading EN → BN...")
             self.en_bn = en.get_translation(bn)
-            
+
+            print("Translation models loaded successfully!")
+
         except Exception as e:
             print(f"ArgosStage Init Error: {e}")
 
     def process(self, data):
-       
-        if data is None or self.hi_en is None:
+        if not data or not self.hi_en:
+            return None
+
+        # safety check
+        if not isinstance(data, dict):
+            print("Invalid input to translation:", data)
+            return None
+
+        text = data.get("text", "").strip()
+        ts = data.get("ts")
+
+        if not text:
             return None
 
         try:
-            text = data.get("text", "").strip()
-            is_final = data.get("final", False)
-            ts = data.get("ts")
-
-            if not text or not is_final:
-                return None
-
-            # Translate through the English pivot
+            # HI → EN → BN
             inter = self.hi_en.translate(text)
             final_text = self.en_bn.translate(inter)
+
+            # UI update
             if self.ui_callback:
-                self.ui_callback(text, final_text, ts=ts)
-            
+                self.ui_callback(text, final_text)
+
             return {
                 "text": final_text,
                 "ts": ts,
-                "final": True
+                "final": True,
             }
+
         except Exception as e:
-            print(f"Translation Loop Error: {e}")
+            print(f"Translation error: {e}")
             return None
