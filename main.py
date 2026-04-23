@@ -140,7 +140,8 @@ class TranslatorApp(ctk.CTk):
         self.translated_q = queue.Queue()
 
         self.mic = MicStage(self.audio_q, ui_callback=self.update_audio_level)
-        self.asr = VoskASR(self.audio_q, self.text_q, "vosk-model-small-hi-0.22")
+        model_path = os.path.join(get_base_path(), "vosk-model-small-hi-0.22")
+        self.asr = VoskASR(self.audio_q, self.text_q, model_path)
 
         self.translator = ArgosStage(
             input_q=self.text_q,
@@ -206,8 +207,8 @@ class TranslatorApp(ctk.CTk):
                 self.running = True
                 self.after(0, lambda: self.status_var.set("● Listening"))
             except Exception as e:
-                self.after(0, lambda: self.status_var.set(str(e)))
-
+                 err = str(e)
+                 self.after(0, lambda: self.status_var.set(err))
         threading.Thread(target=init, daemon=True).start()
 
     def stop_system(self):
