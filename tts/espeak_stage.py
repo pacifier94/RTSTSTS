@@ -13,7 +13,7 @@ class EspeakStage(Stage):
                 is_speaking.set()
 
                 subprocess.run(
-                    ["espeak", text],
+                    ["espeak-ng", text],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
