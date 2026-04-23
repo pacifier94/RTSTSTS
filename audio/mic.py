@@ -27,8 +27,10 @@ class MicStage(Stage):
             audio_float = audio_chunk.astype(np.float32) / 32768.0
             amplitude = float(np.sqrt(np.mean(audio_float ** 2)))
 
+           
+
             # minimal noise filter
-            if amplitude < 0.02:
+            if amplitude < 0.0002:
                 return
 
             try:
@@ -39,13 +41,29 @@ class MicStage(Stage):
             if self.ui_callback:
                 self.ui_callback(amplitude)
 
+        
+        devices = sd.query_devices()
+        input_device = None
+
+        for i, dev in enumerate(devices):
+            if dev['max_input_channels'] > 0:
+                input_device = i
+                break
+
+        if input_device is None:
+            raise RuntimeError("No input audio device found")
+
+        print(f"MicStage: Using device {input_device} - {devices[input_device]['name']}")
+
         with sd.InputStream(
+            device=input_device,
             samplerate=self.samplerate,
             channels=1,
             blocksize=self.blocksize,
             dtype="int16",
             callback=callback,
         ):
+            
             print("MicStage: Listening...")
             while not self._stop_event.is_set():
                 sd.sleep(100)
